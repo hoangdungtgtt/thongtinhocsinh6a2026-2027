@@ -1,0 +1,491 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tra cứu thông tin học sinh - Khối 6</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh; padding: 15px;
+            display: flex; justify-content: center; align-items: flex-start;
+        }
+        .app {
+            background: white; border-radius: 18px;
+            box-shadow: 0 15px 40px rgba(0,0,0,0.25);
+            padding: 22px 18px; max-width: 640px; width: 100%;
+            animation: slideIn 0.4s ease-out;
+        }
+        @keyframes slideIn { from {opacity:0;transform:translateY(-15px);} to {opacity:1;transform:translateY(0);} }
+        h1 { text-align: center; color: #333; font-size: 20px; margin-bottom: 4px; }
+        .subtitle { text-align: center; color: #888; font-size: 12px; margin-bottom: 18px; }
+        .school-name {
+            text-align: center; font-weight: 700; color: #667eea;
+            font-size: 13px; text-transform: uppercase; letter-spacing: 0.5px;
+            margin-bottom: 6px;
+        }
+        .section-title {
+            font-size: 13px; font-weight: 700; color: #667eea;
+            margin: 16px 0 10px 0; padding: 8px 10px;
+            background: linear-gradient(90deg, #f0f2ff, transparent);
+            border-left: 3px solid #667eea; border-radius: 6px;
+        }
+        .form-group { margin-bottom: 14px; position: relative; }
+        label { display: block; font-weight: 600; color: #555; margin-bottom: 5px; font-size: 12.5px; }
+
+        input[type="text"] {
+            width: 100%; padding: 14px 16px; border: 2px solid #e0e0e0;
+            border-radius: 10px; font-size: 17px; transition: all 0.3s ease;
+            background: #fafafa; color: #333; font-family: inherit;
+            letter-spacing: 1px; text-align: center;
+        }
+        input[type="text"]:focus {
+            outline: none; border-color: #667eea; background: white;
+            box-shadow: 0 0 0 4px rgba(102,126,234,0.1);
+        }
+        input[type="text"].invalid {
+            border-color: #f44336;
+            box-shadow: 0 0 0 4px rgba(244,67,54,0.1);
+        }
+
+        /* ===== AUTOCOMPLETE SUGGESTIONS ===== */
+        .suggestions {
+            position: absolute; top: calc(100% + 4px); left: 0; right: 0;
+            background: white; border: 2px solid #e0e4f5;
+            border-radius: 10px; box-shadow: 0 12px 30px rgba(0,0,0,0.15);
+            max-height: 260px; overflow-y: auto; z-index: 100;
+            display: none;
+        }
+        .suggestions.show { display: block; }
+        .suggestion-item {
+            padding: 11px 14px; cursor: pointer; font-size: 14px;
+            color: #333; border-bottom: 1px solid #f0f0f0;
+            transition: background 0.15s ease; text-align: left;
+            letter-spacing: 0.2px;
+        }
+        .suggestion-item:last-child { border-bottom: none; }
+        .suggestion-item:hover,
+        .suggestion-item.active { background: #f0f2ff; color: #667eea; }
+        .suggestion-item .hl { font-weight: 800; color: #667eea; }
+        .suggestion-item .dob-s { color: #999; font-size: 11.5px; margin-left: 4px; }
+        .suggestion-empty {
+            padding: 12px 14px; color: #999; font-size: 13px; text-align: center;
+        }
+
+        .hint {
+            font-size: 11.5px; color: #999; margin-top: 8px;
+            line-height: 1.6; text-align: center;
+        }
+        .hint strong { color: #667eea; }
+
+        .btn {
+            width: 100%; padding: 14px; border: none; border-radius: 12px;
+            font-size: 15px; font-weight: 700; cursor: pointer;
+            transition: all 0.3s ease; letter-spacing: 0.3px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white; margin-top: 10px;
+        }
+        .btn:hover:not(:disabled) { transform: translateY(-2px); box-shadow: 0 10px 20px rgba(102,126,234,0.4); }
+
+        .result-area {
+            display: none;
+            margin-top: 18px;
+            animation: fadeIn 0.4s ease-out;
+        }
+        .result-area.show { display: block; }
+        @keyframes fadeIn { from {opacity:0;transform:translateY(-8px);} to {opacity:1;transform:translateY(0);} }
+
+        /* ===== STUDENT INFO ===== */
+        .student-header {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white; border-radius: 14px; padding: 16px 18px;
+            margin-bottom: 16px;
+        }
+        .student-header .label-small {
+            font-size: 11px; opacity: 0.85; text-transform: uppercase;
+            letter-spacing: 0.5px; margin-bottom: 4px;
+        }
+        .student-header .fullname {
+            font-size: 21px; font-weight: 800; line-height: 1.3;
+        }
+        .student-header .sub-line {
+            font-size: 12px; opacity: 0.9; margin-top: 5px;
+        }
+
+        .info-grid {
+            display: grid; grid-template-columns: 1fr 1fr; gap: 10px;
+            margin-bottom: 8px;
+        }
+        .info-item {
+            background: #f8f9ff; border: 2px solid #e0e4f5;
+            border-radius: 12px; padding: 12px 14px;
+            transition: all 0.25s ease;
+        }
+        .info-item:hover { border-color: #667eea; }
+        .info-item.full { grid-column: 1 / -1; }
+        .info-item .k {
+            font-size: 11px; font-weight: 700; color: #667eea;
+            text-transform: uppercase; letter-spacing: 0.3px;
+            margin-bottom: 5px;
+        }
+        .info-item .v {
+            font-size: 15px; font-weight: 700; color: #333;
+            line-height: 1.35; word-break: break-word;
+        }
+        .info-item .v.mono {
+            font-family: 'Courier New', monospace; letter-spacing: 0.5px;
+        }
+
+        /* ===== PHONE + COPY ===== */
+        .phone-row {
+            display: flex; align-items: center; gap: 10px;
+            flex-wrap: wrap;
+        }
+        .phone-row .v { flex: 1 1 auto; }
+        .btn-copy {
+            border: none; cursor: pointer;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white; font-weight: 700; font-size: 12px;
+            padding: 8px 14px; border-radius: 9px;
+            transition: all 0.2s ease; white-space: nowrap;
+            letter-spacing: 0.2px;
+        }
+        .btn-copy:hover { transform: translateY(-1px); box-shadow: 0 6px 14px rgba(102,126,234,0.4); }
+        .btn-copy:active { transform: translateY(0); }
+        .btn-copy.copied { background: linear-gradient(135deg, #4CAF50, #45a049); }
+
+        .not-found {
+            background: #fff3f3; border: 2px solid #ffcdd2;
+            border-radius: 12px; padding: 18px; text-align: center;
+            color: #c62828; font-weight: 600; font-size: 14px;
+        }
+        .not-found small {
+            font-weight: 400; font-size: 12px; display: block; margin-top: 6px;
+        }
+
+        .toast {
+            position: fixed; top: 20px; left: 50%; transform: translateX(-50%) translateY(-100px);
+            padding: 12px 22px; border-radius: 12px; color: white;
+            font-weight: 600; font-size: 14px; z-index: 9999;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+            transition: transform 0.4s ease; max-width: 90%;
+        }
+        .toast.show { transform: translateX(-50%) translateY(0); }
+        .toast.success { background: linear-gradient(135deg, #4CAF50, #45a049); }
+        .toast.error { background: linear-gradient(135deg, #f44336, #d32f2f); }
+        .toast.info { background: linear-gradient(135deg, #667eea, #764ba2); }
+
+        @media (max-width: 480px) {
+            .info-grid { grid-template-columns: 1fr; gap: 8px; }
+            .student-header .fullname { font-size: 18px; }
+            input[type="text"] { font-size: 16px; }
+            .info-item .v { font-size: 14px; }
+        }
+    </style>
+</head>
+<body>
+    <div class="app">
+        <div class="school-name">Trường THCS Tây Thái Ninh</div>
+        <h1>🔍 TRA CỨU THÔNG TIN HỌC SINH</h1>
+        <p class="subtitle">Danh sách học sinh Khối 6 - Năm học 2026-2027</p>
+
+        <form id="searchForm" autocomplete="off">
+            <div class="section-title">👤 Nhập họ tên học sinh</div>
+            <div class="form-group">
+                <label for="nameInput">Họ và tên của học sinh</label>
+                <input type="text" id="nameInput" placeholder="Nhập họ tên..." autocomplete="off" maxlength="60">
+                <div class="suggestions" id="suggestions"></div>
+            </div>
+            <div class="hint">
+                Gõ họ tên <strong>không dấu hoặc có dấu</strong> đều được.<br>
+                Tên gợi ý sẽ hiện ra khi bạn nhập.
+            </div>
+
+            <button type="submit" class="btn" id="btnSearch">TRA CỨU THÔNG TIN</button>
+        </form>
+
+        <div class="result-area" id="resultArea"></div>
+    </div>
+
+    <div class="toast" id="toast"></div>
+
+    <script>
+        // ===== DỮ LIỆU 40 HỌC SINH THEO FILE =====
+        const RAW = [
+            { stt:1,  ma:"3393989460", ho:"Trần Mai",          ten:"Anh",    dob:"15/10/2015", gioitinh:"Nữ",  dantoc:"Kinh", trangthai:"Đang học", sdt:"0338775534", diachi:"thôn Thái Giang, xã Tây Thái" },
+            { stt:2,  ma:"3393989461", ho:"Trần Hồng",         ten:"Cẩm",    dob:"10/12/2015", gioitinh:"Nam", dantoc:"Kinh", trangthai:"Đang học", sdt:"0398347535", diachi:"Thôn Thái Giang" },
+            { stt:3,  ma:"3393989462", ho:"Bùi Quỳnh",         ten:"Chi",    dob:"31/01/2015", gioitinh:"Nữ",  dantoc:"Kinh", trangthai:"Đang học", sdt:"0343378862", diachi:"Thôn Phất Lộc, xã Tây Thái N" },
+            { stt:4,  ma:"3393989463", ho:"Đặng Phương",       ten:"Chi",    dob:"03/02/2015", gioitinh:"Nữ",  dantoc:"Kinh", trangthai:"Đang học", sdt:"0348232406", diachi:"Thôn Phất Lộc, xã Tây Thái N" },
+            { stt:5,  ma:"3393989464", ho:"Nguyễn Thị",        ten:"Chi",    dob:"21/01/2015", gioitinh:"Nữ",  dantoc:"Kinh", trangthai:"Đang học", sdt:"0971513283", diachi:"Thôn Phất Lộc, xã Tây Thái N" },
+            { stt:6,  ma:"3393989465", ho:"Trần Nguyên",       ten:"Chi",    dob:"27/05/2015", gioitinh:"Nữ",  dantoc:"Kinh", trangthai:"Đang học", sdt:"0988955618", diachi:"thôn Thái Giang, xã Tây Thái" },
+            { stt:7,  ma:"3393989466", ho:"Ngô Mạnh",          ten:"Cường",  dob:"27/11/2015", gioitinh:"Nam", dantoc:"Kinh", trangthai:"Đang học", sdt:"0373535789", diachi:"Thôn Phất Lộc , xã Tây Thái N" },
+            { stt:8,  ma:"3393989467", ho:"Bùi Hiền",          ten:"Dịu",    dob:"20/02/2015", gioitinh:"Nữ",  dantoc:"Kinh", trangthai:"Đang học", sdt:"0374539848", diachi:"Thôn Phất Lộc,xã Tây Thái Ni" },
+            { stt:9,  ma:"3393989468", ho:"Nguyễn Thùy",       ten:"Dung",   dob:"11/07/2015", gioitinh:"Nữ",  dantoc:"Kinh", trangthai:"Đang học", sdt:"0973923050", diachi:"Thôn Phất Lộc" },
+            { stt:10, ma:"3393989469", ho:"Trần Đức",          ten:"Duy",    dob:"06/07/2015", gioitinh:"Nam", dantoc:"Kinh", trangthai:"Đang học", sdt:"0376055963", diachi:"Thôn Thái Giang, xã Tây Thái" },
+            { stt:11, ma:"3393989471", ho:"Nguyễn Thành",      ten:"Đạt",    dob:"11/01/2015", gioitinh:"Nam", dantoc:"Kinh", trangthai:"Đang học", sdt:"0342206635", diachi:"Thôn Phất Lộc" },
+            { stt:12, ma:"3393989516", ho:"Bùi Đức",           ten:"Hiếu",   dob:"13/05/2015", gioitinh:"Nam", dantoc:"Kinh", trangthai:"Đang học", sdt:"0986683771", diachi:"Thôn Thái Giang, xã Tây Thái" },
+            { stt:13, ma:"3393989518", ho:"Nguyễn Trung",      ten:"Hiếu",   dob:"11/05/2015", gioitinh:"Nam", dantoc:"Kinh", trangthai:"Đang học", sdt:"0362966357", diachi:"thôn Phất Lộc" },
+            { stt:14, ma:"3393989473", ho:"Bùi Minh",          ten:"Hòa",    dob:"01/01/2015", gioitinh:"Nam", dantoc:"Kinh", trangthai:"Đang học", sdt:"0398685999", diachi:"Thôn Phất Lộc, xã Tây Thái N" },
+            { stt:15, ma:"3393989474", ho:"Nguyễn Thái",       ten:"Hòa",    dob:"06/01/2015", gioitinh:"Nam", dantoc:"Kinh", trangthai:"Đang học", sdt:"0357047241", diachi:"Thôn Phất Lộc, xã Tây Thái N" },
+            { stt:16, ma:"3393989475", ho:"Lê Huy",            ten:"Hoàng",  dob:"05/08/2015", gioitinh:"Nam", dantoc:"Kinh", trangthai:"Đang học", sdt:"0904254532", diachi:"Thôn Phất Lộc, xã Tây Thái N" },
+            { stt:17, ma:"3393989476", ho:"Nguyễn Ngọc",       ten:"Hùng",   dob:"06/07/2015", gioitinh:"Nam", dantoc:"Kinh", trangthai:"Đang học", sdt:"0346009234", diachi:"Thôn Phất Lộc, xã Tây Thái N" },
+            { stt:18, ma:"3393989477", ho:"Bùi Đức",           ten:"Khánh",  dob:"14/11/2015", gioitinh:"Nam", dantoc:"Kinh", trangthai:"Đang học", sdt:"0393577319", diachi:"Thôn Thái Giang , xã Tây Thái" },
+            { stt:19, ma:"3393989478", ho:"Nguyễn Hoàng Ngọc", ten:"Khánh",  dob:"17/03/2015", gioitinh:"Nam", dantoc:"Kinh", trangthai:"Đang học", sdt:"0385618969", diachi:"Thôn Phất Lộc, xã Tây Thái N" },
+            { stt:20, ma:"3393989479", ho:"Hoàng Khánh",       ten:"Long",   dob:"30/01/2015", gioitinh:"Nam", dantoc:"Tày",  trangthai:"Đang học", sdt:"0979048727", diachi:"Thôn Phất Lộc, xã Tây Thái N" },
+            { stt:21, ma:"3393989480", ho:"Bùi Khánh",         ten:"Ly",     dob:"15/04/2015", gioitinh:"Nữ",  dantoc:"Kinh", trangthai:"Đang học", sdt:"0363816952", diachi:"Thôn Phất Lộc, xã Tây Thái N" },
+            { stt:22, ma:"3393989481", ho:"Đỗ Anh",            ten:"Minh",   dob:"20/02/2015", gioitinh:"Nam", dantoc:"Kinh", trangthai:"Đang học", sdt:"0949581528", diachi:"Thôn Phất Lộc, xã Tây Thái N" },
+            { stt:23, ma:"3461567528", ho:"Hà Trần",           ten:"Minh",   dob:"15/09/2015", gioitinh:"Nam", dantoc:"Kinh", trangthai:"Đang học", sdt:"0366292652", diachi:"Thôn Bắc Thái Đô, xã Đông Th Yên" },
+            { stt:24, ma:"3393989482", ho:"Nguyễn Hoàng Hải",  ten:"Nam",    dob:"06/03/2015", gioitinh:"Nam", dantoc:"Kinh", trangthai:"Đang học", sdt:"0971542299", diachi:"Thôn Phất Lộc, xã Tây Thái N" },
+            { stt:25, ma:"3393989483", ho:"Trần Đức",          ten:"Nam",    dob:"15/08/2015", gioitinh:"Nam", dantoc:"Kinh", trangthai:"Đang học", sdt:"0966476960", diachi:"Thôn Thái Giang, xã Tây Thái" },
+            { stt:26, ma:"3393989484", ho:"Bùi Trung",         ten:"Nghĩa",  dob:"01/04/2015", gioitinh:"Nam", dantoc:"Kinh", trangthai:"Đang học", sdt:"0356614694", diachi:"Thôn phất lộc, xã Tây Thái Ni" },
+            { stt:27, ma:"3393989485", ho:"Nguyễn Thị Bảo",    ten:"Ngọc",   dob:"29/04/2015", gioitinh:"Nữ",  dantoc:"Kinh", trangthai:"Đang học", sdt:"0382022428", diachi:"Thôn Thái Giang, xã Tây Thái" },
+            { stt:28, ma:"3393989486", ho:"Bùi Ngọc",          ten:"Nhi",    dob:"25/08/2015", gioitinh:"Nữ",  dantoc:"Kinh", trangthai:"Đang học", sdt:"0837666139", diachi:"Thôn Phất Lộc Trung, xã Tây T Yên" },
+            { stt:29, ma:"3393989488", ho:"Bùi Mai Dy",        ten:"Niên",   dob:"03/11/2015", gioitinh:"Nữ",  dantoc:"Kinh", trangthai:"Đang học", sdt:"0387795332", diachi:"Thôn Phất Lộc, xã Tây Thái N" },
+            { stt:30, ma:"3393989489", ho:"Trần Minh",         ten:"Phương", dob:"09/06/2015", gioitinh:"Nữ",  dantoc:"Kinh", trangthai:"Đang học", sdt:"0963526788", diachi:"Thôn Thái Giáng" },
+            { stt:31, ma:"3393989490", ho:"Trần Đại",          ten:"Quang",  dob:"23/05/2015", gioitinh:"Nam", dantoc:"Kinh", trangthai:"Đang học", sdt:"0964014382", diachi:"Thôn Thái Giang, xã Tây Thái" },
+            { stt:32, ma:"3393989491", ho:"Nguyễn Thị Lệ",     ten:"Quyên",  dob:"13/02/2015", gioitinh:"Nữ",  dantoc:"Kinh", trangthai:"Đang học", sdt:"0397465504", diachi:"Thôn Thái Giang, xã Tây Thái" },
+            { stt:33, ma:"3393989493", ho:"Trần Diễm",         ten:"Quỳnh",  dob:"18/07/2015", gioitinh:"Nữ",  dantoc:"Kinh", trangthai:"Đang học", sdt:"0964910398", diachi:"Thôn Thái Giang, xã Tây Thái" },
+            { stt:34, ma:"3454468448", ho:"Bùi Nguyễn Tuệ",    ten:"Sam",    dob:"30/01/2015", gioitinh:"Nữ",  dantoc:"Kinh", trangthai:"Đang học", sdt:"0376819968", diachi:"Thôn Phất Lộc, xã Tây Thái N" },
+            { stt:35, ma:"3393989494", ho:"Lê Tiến",           ten:"Tài",    dob:"16/01/2015", gioitinh:"Nam", dantoc:"Kinh", trangthai:"Đang học", sdt:"0971732621", diachi:"Thôn Phất Lộc, xã Tây Thái N" },
+            { stt:36, ma:"3393989531", ho:"Nguyễn Trung",      ten:"Thành",  dob:"11/05/2015", gioitinh:"Nam", dantoc:"Kinh", trangthai:"Đang học", sdt:"0362966357", diachi:"Thôn Phát Lộc" },
+            { stt:37, ma:"3393989495", ho:"Trần Đức",          ten:"Thắng",  dob:"04/01/2015", gioitinh:"Nam", dantoc:"Kinh", trangthai:"Đang học", sdt:"0977960297", diachi:"Thôn Thái Giang, xã Tây Thái" },
+            { stt:38, ma:"3393989496", ho:"Bùi Gia",           ten:"Thịnh",  dob:"04/04/2015", gioitinh:"Nam", dantoc:"Kinh", trangthai:"Đang học", sdt:"0336830717", diachi:"Thôn Thái Giang, xã Tây Thái" },
+            { stt:39, ma:"3393989497", ho:"Bùi Đức",           ten:"Tiến",   dob:"04/09/2015", gioitinh:"Nam", dantoc:"Kinh", trangthai:"Đang học", sdt:"0339890808", diachi:"Thái Giang" },
+            { stt:40, ma:"3393989498", ho:"Ngô Xuân",          ten:"Tùng",   dob:"18/03/2015", gioitinh:"Nam", dantoc:"Kinh", trangthai:"Đang học", sdt:"0387917429", diachi:"Thôn Phất Lộc, xã Tây Thái N" }
+        ];
+
+        const $ = id => document.getElementById(id);
+
+        function showToast(msg, type = 'info') {
+            const t = $('toast');
+            t.textContent = msg;
+            t.className = 'toast ' + type + ' show';
+            clearTimeout(t._timer);
+            t._timer = setTimeout(() => t.classList.remove('show'), 3000);
+        }
+
+        function removeDiacritics(str) {
+            return str.normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+                       .replace(/đ/g, 'd').replace(/Đ/g, 'D');
+        }
+
+        function fullName(s) { return `${s.ho} ${s.ten}`; }
+
+        function searchStudents(keyword) {
+            const kw = removeDiacritics(keyword.trim().toLowerCase());
+            if (!kw) return [];
+            return RAW.filter(s => {
+                const full = removeDiacritics(fullName(s).toLowerCase());
+                return full.includes(kw);
+            });
+        }
+
+        function showSuggestions(keyword) {
+            const box = $('suggestions');
+            const kw = keyword.trim();
+            if (!kw) { box.classList.remove('show'); box.innerHTML = ''; return; }
+
+            const matches = searchStudents(kw);
+            if (matches.length === 0) {
+                box.innerHTML = `<div class="suggestion-empty">Không tìm thấy học sinh nào</div>`;
+                box.classList.add('show');
+                return;
+            }
+
+            const kwNoDiacritic = removeDiacritics(kw.toLowerCase());
+            box.innerHTML = matches.slice(0, 20).map(s => {
+                const full = fullName(s);
+                const idx = removeDiacritics(full.toLowerCase()).indexOf(kwNoDiacritic);
+                let html = '';
+                if (idx >= 0) {
+                    html = `${full.slice(0, idx)}<span class="hl">${full.slice(idx, idx + kw.length)}</span>${full.slice(idx + kw.length)}`;
+                } else {
+                    html = full;
+                }
+                return `<div class="suggestion-item" data-name="${full}">${html} <span class="dob-s">(${s.dob})</span></div>`;
+            }).join('');
+            box.classList.add('show');
+        }
+
+        // Render kết quả
+        function renderResult(students) {
+            const area = $('resultArea');
+            area.classList.add('show');
+
+            if (students.length === 0) {
+                area.innerHTML = `
+                    <div class="not-found">
+                        ❌ Không tìm thấy học sinh có tên này
+                        <small>Vui lòng kiểm tra lại họ tên.</small>
+                    </div>`;
+                return;
+            }
+
+            let html = '';
+            students.forEach(s => {
+                const full = fullName(s);
+                const safePhone = (s.sdt || '').replace(/'/g, "\\'");
+                html += `
+                    <div class="student-header">
+                        <div class="label-small">Họ và tên học sinh</div>
+                        <div class="fullname">${full}</div>
+                        <div class="sub-line">Mã định danh: ${s.ma} · STT: ${s.stt}</div>
+                    </div>
+
+                    <div class="info-grid">
+                        <div class="info-item">
+                            <div class="k">Ngày sinh</div>
+                            <div class="v">${s.dob}</div>
+                        </div>
+                        <div class="info-item">
+                            <div class="k">Giới tính</div>
+                            <div class="v">${s.gioitinh}</div>
+                        </div>
+                        <div class="info-item">
+                            <div class="k">Dân tộc</div>
+                            <div class="v">${s.dantoc}</div>
+                        </div>
+                        <div class="info-item">
+                            <div class="k">Trạng thái</div>
+                            <div class="v">${s.trangthai}</div>
+                        </div>
+                        <div class="info-item full">
+                            <div class="k">Số điện thoại liên hệ</div>
+                            <div class="v phone-row">
+                                <span class="v mono">${s.sdt}</span>
+                                <button type="button" class="btn-copy" data-phone="${s.sdt}" onclick="copyPhone('${safePhone}', this)">📋 Copy</button>
+                            </div>
+                        </div>
+                        <div class="info-item full">
+                            <div class="k">Tổ/thôn Hộ khẩu thường trú</div>
+                            <div class="v">${s.diachi}</div>
+                        </div>
+                    </div>
+                `;
+            });
+
+            area.innerHTML = html;
+        }
+
+        // Copy số điện thoại
+        function copyPhone(phone, btn) {
+            const done = () => {
+                showToast('✅ Đã sao chép SĐT: ' + phone, 'success');
+                if (btn) {
+                    const old = btn.innerHTML;
+                    btn.innerHTML = '✔ Đã copy';
+                    btn.classList.add('copied');
+                    setTimeout(() => {
+                        btn.innerHTML = old;
+                        btn.classList.remove('copied');
+                    }, 1600);
+                }
+            };
+
+            // Ưu tiên Clipboard API
+            if (navigator.clipboard && window.isSecureContext) {
+                navigator.clipboard.writeText(phone).then(done).catch(() => fallbackCopy(phone, done));
+            } else {
+                fallbackCopy(phone, done);
+            }
+        }
+
+        function fallbackCopy(text, done) {
+            const ta = document.createElement('textarea');
+            ta.value = text;
+            ta.setAttribute('readonly', '');
+            ta.style.position = 'fixed';
+            ta.style.top = '-9999px';
+            document.body.appendChild(ta);
+            ta.select();
+            try {
+                document.execCommand('copy');
+                done();
+            } catch (e) {
+                showToast('❌ Không thể sao chép. Vui lòng copy thủ công.', 'error');
+            }
+            document.body.removeChild(ta);
+        }
+
+        // ===== GỢI Ý =====
+        const nameInput = $('nameInput');
+        const suggBox = $('suggestions');
+
+        nameInput.addEventListener('input', () => {
+            nameInput.classList.remove('invalid');
+            $('resultArea').classList.remove('show');
+            $('resultArea').innerHTML = '';
+            showSuggestions(nameInput.value);
+        });
+
+        suggBox.addEventListener('click', e => {
+            const item = e.target.closest('.suggestion-item');
+            if (!item) return;
+            nameInput.value = item.dataset.name;
+            suggBox.classList.remove('show');
+            doSearch(item.dataset.name);
+        });
+
+        document.addEventListener('click', e => {
+            if (!e.target.closest('.form-group')) {
+                suggBox.classList.remove('show');
+            }
+        });
+
+        nameInput.addEventListener('keydown', e => {
+            const items = suggBox.querySelectorAll('.suggestion-item');
+            if (!items.length || !suggBox.classList.contains('show')) return;
+
+            let active = suggBox.querySelector('.suggestion-item.active');
+            let idx = active ? Array.from(items).indexOf(active) : -1;
+
+            if (e.key === 'ArrowDown') {
+                e.preventDefault();
+                if (active) active.classList.remove('active');
+                idx = (idx + 1) % items.length;
+                items[idx].classList.add('active');
+                items[idx].scrollIntoView({ block: 'nearest' });
+            } else if (e.key === 'ArrowUp') {
+                e.preventDefault();
+                if (active) active.classList.remove('active');
+                idx = (idx - 1 + items.length) % items.length;
+                items[idx].classList.add('active');
+                items[idx].scrollIntoView({ block: 'nearest' });
+            } else if (e.key === 'Enter' && active) {
+                e.preventDefault();
+                nameInput.value = active.dataset.name;
+                suggBox.classList.remove('show');
+                doSearch(active.dataset.name);
+            } else if (e.key === 'Escape') {
+                suggBox.classList.remove('show');
+            }
+        });
+
+        // ===== TRA CỨU =====
+        function doSearch(keyword) {
+            const raw = (keyword || '').trim();
+            if (!raw) {
+                showToast('⚠️ Vui lòng nhập họ tên học sinh!', 'error');
+                nameInput.classList.add('invalid'); nameInput.focus(); return;
+            }
+            const matches = searchStudents(raw);
+            if (matches.length === 0) {
+                showToast('❌ Không tìm thấy học sinh với tên này', 'error');
+            } else if (matches.length === 1) {
+                showToast('✅ Đã tìm thấy thông tin!', 'success');
+            } else {
+                showToast(`ℹ️ Có ${matches.length} học sinh phù hợp`, 'info');
+            }
+            nameInput.classList.remove('invalid');
+            renderResult(matches);
+        }
+
+        $('searchForm').addEventListener('submit', e => {
+            e.preventDefault();
+            doSearch(nameInput.value);
+        });
+    </script>
+</body>
+</html>
